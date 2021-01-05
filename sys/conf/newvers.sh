@@ -184,6 +184,10 @@ if findvcs .git; then
 	done
 fi
 
+if findvcs .gituprevision; then
+	gituprevision="${VCSTOP}/.gituprevision"
+fi
+
 if findvcs .hg; then
 	for dir in /usr/bin /usr/local/bin; do
 		if [ -x "${dir}/hg" ] ; then
@@ -246,6 +250,10 @@ if [ -n "$p4_cmd" ] ; then
 	esac
 fi
 
+if [ -n "$gituprevision" ] ; then
+	gitup="$(awk -F : '{printf " %s", $2}' $gituprevision)"
+fi
+
 if [ -n "$hg_cmd" ] ; then
 	hg=`$hg_cmd id 2>/dev/null`
 	svn=`$hg_cmd svn info 2>/dev/null | \
@@ -273,10 +281,10 @@ done
 shift $((OPTIND - 1))
 
 if [ -z "${include_metadata}" ]; then
-	VERINFO="${VERSION}${svn}${git}${hg}${p4version} ${i}"
+	VERINFO="${VERSION}${svn}${git}${gitup}${hg}${p4version} ${i}"
 	VERSTR="${VERINFO}\\n"
 else
-	VERINFO="${VERSION} #${v}${svn}${git}${hg}${p4version}: ${t}"
+	VERINFO="${VERSION} #${v}${svn}${git}${gitup}${hg}${p4version}: ${t}"
 	VERSTR="${VERINFO}\\n    ${u}@${h}:${d}\\n"
 fi
 
