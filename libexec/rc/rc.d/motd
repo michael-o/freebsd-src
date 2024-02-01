@@ -21,10 +21,6 @@ PERMS="644"
 
 motd_start()
 {
-	#	Update kernel info in /var/run/motd
-	#	Must be done *before* interactive logins are possible
-	#	to prevent possible race conditions.
-	#
 	startmsg -n 'Updating motd:'
 	if [ ! -f "${TEMPLATE}" ]; then
 		# Create missing template from existing regular motd file, if
@@ -43,13 +39,7 @@ motd_start()
 		ln -sF "${TARGET}" "${COMPAT_MOTD}"
 	fi
 
-	T=`mktemp -t motd`
-	uname -v | sed -e 's,^\([^#]*\) #\(.* [1-2][0-9][0-9][0-9]\).*/\([^\]*\)$,\1 (\3) #\2,' \
-	    -e 's,^\([^ ]*\) \([^ ]*\) \([^ ]*\) \([^ ]*\)$,\1 \2 (\4) \3,' > ${T}
-	cat "${TEMPLATE}" >> ${T}
-
-	install -C -o root -g wheel -m "${PERMS}" "$T" "${TARGET}"
-	rm -f "$T"
+	install -C -o root -g wheel -m "${PERMS}" "${TEMPLATE}" "${TARGET}"
 
 	startmsg '.'
 }
