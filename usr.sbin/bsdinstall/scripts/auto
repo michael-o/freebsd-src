@@ -171,7 +171,7 @@ environment_save()
 
 ############################################################ MAIN
 
-f_dprintf "Began Installation at %s" "$( date )"
+f_dprintf "Began Installation at %s" "$(date -Iseconds)"
 
 environment_save
 
@@ -485,7 +485,7 @@ fi
 bsdinstall entropy
 bsdinstall umount
 
-f_dprintf "Installation Completed at %s" "$( date )"
+f_dprintf "Installation Completed at %s" "$(date -Iseconds)"
 
 ################################################################################
 # END

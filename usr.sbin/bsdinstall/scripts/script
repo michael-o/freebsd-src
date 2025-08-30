@@ -85,7 +85,7 @@ trap error EXIT
 SCRIPT="$1"
 shift
 
-f_dprintf "Began Installation at %s" "$( date )"
+f_dprintf "Began Installation at %s" "$(date -Iseconds)"
 rm -rf $BSDINSTALL_TMPETC
 mkdir $BSDINSTALL_TMPETC
 rm -f $TMPDIR/bsdinstall-installscript-setup
@@ -105,7 +105,7 @@ if [ "$BSDINSTALL_LOG" != "${debugFile#+}" ]; then
 	export debugFile="$BSDINSTALL_LOG"
 	f_quietly f_debug_init
 	# NB: Being scripted, let debug go to terminal for invalid debugFile
-	f_dprintf "Began Installation at %s" "$( date )"
+	f_dprintf "Began Installation at %s" "$(date -Iseconds)"
 fi
 
 # Make partitions
@@ -177,7 +177,7 @@ if [ "$ZFSBOOT_DISKS" ]; then
 	zpool export $ZFSBOOT_POOL_NAME
 fi
 
-f_dprintf "Installation Completed at %s" "$( date )"
+f_dprintf "Installation Completed at %s" "$(date -Iseconds)"
 
 trap - EXIT
 exit $SUCCESS
