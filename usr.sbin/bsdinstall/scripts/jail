@@ -149,7 +149,7 @@ environment_save()
 
 : ${BSDDIALOG_OK=0}
 
-f_dprintf "Began Installation at %s" "$( date )"
+f_dprintf "Began Installation at %s" "$(date -Iseconds)"
 
 if [ -z "$1" ]; then
 	error "Directory can not be empty\n\nUsage:\nbsdinstall jail directory"
@@ -223,7 +223,7 @@ fi
 
 bsdinstall entropy
 
-f_dprintf "Installation Completed at %s" "$(date)"
+f_dprintf "Installation Completed at %s" "$(date -Iseconds)"
 exit $SUCCESS
 
 ################################################################################

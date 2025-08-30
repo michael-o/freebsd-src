@@ -400,7 +400,7 @@ _guard: .PHONY
 	@echo
 	@false
 
-STARTTIME!= LC_ALL=C date
+STARTTIME!= date -Iseconds
 CHECK_TIME!= cmp=`mktemp`; find ${.CURDIR}/sys/sys/param.h -newer "$$cmp" && rm "$$cmp"; echo
 .if !empty(CHECK_TIME)
 .error check your date/time: ${STARTTIME}
@@ -437,7 +437,7 @@ world: upgrade_checks .PHONY
 .endif
 	@echo
 	@echo "--------------------------------------------------------------"
-	@echo ">>> make world completed on `LC_ALL=C date`"
+	@echo ">>> make world completed on `date -Iseconds`"
 	@echo "                   (started ${STARTTIME})"
 	@echo "--------------------------------------------------------------"
 .else
@@ -618,7 +618,7 @@ universe_prologue: .PHONY
 
 universe-toolchain: .PHONY universe_prologue
 	@echo "--------------------------------------------------------------"
-	@echo "> Toolchain bootstrap started on `LC_ALL=C date`"
+	@echo "> Toolchain bootstrap started on `date -Iseconds`"
 	@echo "--------------------------------------------------------------"
 	${_+_}@cd ${.CURDIR}; \
 	    env PATH=${PATH:Q} ${SUB_MAKE} ${JFLAG} kernel-toolchain \
@@ -643,7 +643,7 @@ universe-toolchain: .PHONY universe_prologue
 	    false; \
 	fi
 	@echo "--------------------------------------------------------------"
-	@echo "> Toolchain bootstrap completed on `LC_ALL=C date`"
+	@echo "> Toolchain bootstrap completed on `date -Iseconds`"
 	@echo "--------------------------------------------------------------"
 
 .for target in ${_UNIVERSE_TARGETS}
@@ -651,7 +651,7 @@ universe: universe_${target}
 universe_epilogue: universe_${target}
 universe_${target}: universe_${target}_prologue .PHONY
 universe_${target}_prologue: universe_prologue .PHONY
-	@echo ">> ${target} started on `LC_ALL=C date`"
+	@echo ">> ${target} started on `date -Iseconds`"
 universe_${target}_worlds: .PHONY
 
 .if !make(targets) && !make(universe-toolchain)
@@ -710,7 +710,7 @@ universe_${target}_${target_arch}: universe-toolchain
 universe_${target}_prologue: universe-toolchain
 .endif
 universe_${target}_${target_arch}: universe_${target}_prologue .MAKE .PHONY
-	@echo ">> ${target}.${target_arch} ${UNIVERSE_TARGET} started on `LC_ALL=C date`"
+	@echo ">> ${target}.${target_arch} ${UNIVERSE_TARGET} started on `date -Iseconds`"
 	@(cd ${.CURDIR} && env __MAKE_CONF=/dev/null \
 	    ${SUB_MAKE} ${JFLAG} ${UNIVERSE_TARGET} \
 	    TARGET=${target} \
@@ -720,7 +720,7 @@ universe_${target}_${target_arch}: universe_${target}_prologue .MAKE .PHONY
 	    (echo "${target}.${target_arch} ${UNIVERSE_TARGET} failed," \
 	    "check _.${target}.${target_arch}.${UNIVERSE_TARGET} for details" | \
 	    ${MAKEFAIL}))
-	@echo ">> ${target}.${target_arch} ${UNIVERSE_TARGET} completed on `LC_ALL=C date`"
+	@echo ">> ${target}.${target_arch} ${UNIVERSE_TARGET} completed on `date -Iseconds`"
 .endfor
 .endif # ${__DO_WORLDS} == "yes"
 
@@ -735,16 +735,16 @@ universe_${target}_kernels: universe_${target}_prologue .MAKE .PHONY
 # Tell the user the worlds and kernels have completed
 universe_${target}: universe_${target}_done
 universe_${target}_done:
-	@echo ">> ${target} completed on `LC_ALL=C date`"
+	@echo ">> ${target} completed on `date -Iseconds`"
 .endfor
 .if make(universe_kernconfs) || make(universe_kernels)
 .if !defined(TARGET)
 TARGET!=	uname -m
 .endif
 universe_kernels_prologue: .PHONY
-	@echo ">> ${TARGET} kernels started on `LC_ALL=C date`"
+	@echo ">> ${TARGET} kernels started on `date -Iseconds`"
 universe_kernels: universe_kernconfs .PHONY
-	@echo ">> ${TARGET} kernels completed on `LC_ALL=C date`"
+	@echo ">> ${TARGET} kernels completed on `date -Iseconds`"
 .if defined(MAKE_ALL_KERNELS)
 _THINNER=cat
 .elif defined(MAKE_LINT_KERNELS)
@@ -768,7 +768,7 @@ TARGET_ARCH_${kernel}!=	cd ${KERNSRCDIR}/${TARGET}/conf && \
 .endif
 universe_kernconfs_${TARGET_ARCH_${kernel}}: universe_kernconf_${TARGET}_${kernel}
 universe_kernconf_${TARGET}_${kernel}: .MAKE
-	@echo ">> ${TARGET}.${TARGET_ARCH_${kernel}} ${kernel} kernel started on `LC_ALL=C date`"
+	@echo ">> ${TARGET}.${TARGET_ARCH_${kernel}} ${kernel} kernel started on `date -Iseconds`"
 	@(cd ${.CURDIR} && env __MAKE_CONF=/dev/null \
 	    ${SUB_MAKE} ${JFLAG} buildkernel \
 	    TARGET=${TARGET} \
@@ -778,7 +778,7 @@ universe_kernconf_${TARGET}_${kernel}: .MAKE
 	    > _.${TARGET}.${kernel} 2>&1 || \
 	    (echo "${TARGET} ${kernel} kernel failed," \
 	    "check _.${TARGET}.${kernel} for details"| ${MAKEFAIL}))
-	@echo ">> ${TARGET}.${TARGET_ARCH_${kernel}} ${kernel} kernel completed on `LC_ALL=C date`"
+	@echo ">> ${TARGET}.${TARGET_ARCH_${kernel}} ${kernel} kernel completed on `date -Iseconds`"
 .endfor
 .for target_arch in ${TARGET_ARCHES_${TARGET}}
 universe_kernconfs: universe_kernconfs_${target_arch} .PHONY
@@ -788,7 +788,7 @@ universe_kernconfs_${target_arch}:
 universe: universe_epilogue
 universe_epilogue: .PHONY
 	@echo "--------------------------------------------------------------"
-	@echo ">>> make universe completed on `LC_ALL=C date`"
+	@echo ">>> make universe completed on `date -Iseconds`"
 	@echo "                      (started ${STARTTIME})"
 	@echo "--------------------------------------------------------------"
 .if defined(DOING_TINDERBOX)

@@ -390,7 +390,7 @@ _TOOLCHAIN_METADATA_VARS=	COMPILER_VERSION \
 				LINKER_FREEBSD_VERSION
 toolchain-metadata.mk: .PHONY .META
 	@: > ${.TARGET}
-	@echo ".info Using cached toolchain metadata from build at $$(hostname) on $$(date)" \
+	@echo ".info Using cached toolchain metadata from build at $$(hostname) on $$(date -Iseconds)" \
 	    > ${.TARGET}
 	@echo "_LOADED_TOOLCHAIN_METADATA=t" >> ${.TARGET}
 .for v in ${_TOOLCHAIN_METADATA_VARS}
@@ -1271,13 +1271,13 @@ _ncpu_cmd=sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo unknown
 
 buildworld_prologue: .PHONY
 	@echo "--------------------------------------------------------------"
-	@echo ">>> World build started on `LC_ALL=C date`"
+	@echo ">>> World build started on `date -Iseconds`"
 	@echo "--------------------------------------------------------------"
 
 buildworld_epilogue: .PHONY
 	@echo
 	@echo "--------------------------------------------------------------"
-	@echo ">>> World build completed on `LC_ALL=C date`"
+	@echo ">>> World build completed on `date -Iseconds`"
 	@seconds=$$(($$(date '+%s') - ${_BUILDWORLD_START})); \
 	  echo ">>> World built in $$seconds seconds, ncpu: $$(${_ncpu_cmd})${.MAKE.JOBS:S/^/, make -j/}"
 	@echo "--------------------------------------------------------------"
@@ -1330,11 +1330,11 @@ kernel-toolchain: ${KERNEL_TOOLCHAIN_TGTS} .PHONY
 installcheck: _installcheck_world _installcheck_kernel .PHONY
 _installcheck_world: .PHONY
 	@echo "--------------------------------------------------------------"
-	@echo ">>> Install check world started on `LC_ALL=C date`"
+	@echo ">>> Install check world started on `date -Iseconds`"
 	@echo "--------------------------------------------------------------"
 _installcheck_kernel: .PHONY
 	@echo "--------------------------------------------------------------"
-	@echo ">>> Install check kernel started on `LC_ALL=C date`"
+	@echo ">>> Install check kernel started on `date -Iseconds`"
 	@echo "--------------------------------------------------------------"
 
 #
@@ -1645,14 +1645,14 @@ restage reinstall: .MAKE .PHONY
 .endif
 	@echo
 	@echo "--------------------------------------------------------------"
-	@echo ">>> Installing everything started on `LC_ALL=C date`"
+	@echo ">>> Installing everything started on `date -Iseconds`"
 	@echo "--------------------------------------------------------------"
 	${_+_}cd ${.CURDIR}; ${MAKE} -f Makefile.inc1 install
 .for libcompat in ${libcompats}
 	${_+_}cd ${.CURDIR}; ${MAKE} -f Makefile.inc1 install${libcompat}
 .endfor
 	@echo "--------------------------------------------------------------"
-	@echo ">>> Installing everything completed on `LC_ALL=C date`"
+	@echo ">>> Installing everything completed on `date -Iseconds`"
 	@seconds=$$(($$(date '+%s') - ${_INSTALLWORLD_START})); \
 	  echo ">>> Install world completed in $$seconds seconds, ncpu: $$(${_ncpu_cmd})${.MAKE.JOBS:S/^/, make -j/}"
 	@echo "--------------------------------------------------------------"
@@ -1805,7 +1805,7 @@ buildkernel: .MAKE .PHONY
 	@echo
 .for _kernel in ${BUILDKERNELS:Ndummy}
 	@echo "--------------------------------------------------------------"
-	@echo ">>> Kernel build for ${_kernel} started on `LC_ALL=C date`"
+	@echo ">>> Kernel build for ${_kernel} started on `date -Iseconds`"
 	@echo "--------------------------------------------------------------"
 	@echo "===> ${_kernel}"
 	mkdir -p ${KRNLOBJDIR}
@@ -1847,7 +1847,7 @@ buildkernel: .MAKE .PHONY
 	@echo "--------------------------------------------------------------"
 	${_+_}cd ${KRNLOBJDIR}/${_kernel}; ${KMAKE} all -DNO_MODULES_OBJ
 	@echo "--------------------------------------------------------------"
-	@echo ">>> Kernel build for ${_kernel} completed on `LC_ALL=C date`"
+	@echo ">>> Kernel build for ${_kernel} completed on `date -Iseconds`"
 	@echo "--------------------------------------------------------------"
 
 .endfor
@@ -1878,14 +1878,14 @@ reinstallkernel reinstallkernel.debug: _installcheck_kernel .PHONY
 	false
 .endif
 	@echo "--------------------------------------------------------------"
-	@echo ">>> Installing kernel ${INSTALLKERNEL} on $$(LC_ALL=C date)"
+	@echo ">>> Installing kernel ${INSTALLKERNEL} on $$(date -Iseconds)"
 	@echo "--------------------------------------------------------------"
 	${_+_}cd ${KRNLOBJDIR}/${INSTALLKERNEL}; \
 	    ${CROSSENV} PATH=${TMPPATH:Q} \
 	    ${MAKE} ${IMAKE_INSTALL} KERNEL=${INSTKERNNAME} METALOG=${METALOG} \
 	    ${.TARGET:S/kernel//}
 	@echo "--------------------------------------------------------------"
-	@echo ">>> Installing kernel ${INSTALLKERNEL} completed on $$(LC_ALL=C date)"
+	@echo ">>> Installing kernel ${INSTALLKERNEL} completed on $$(date -Iseconds)"
 	@echo "--------------------------------------------------------------"
 	@seconds=$$(($$(date '+%s') - ${_INSTALLKERNEL_START})); \
 	  echo ">>> Install kernel(s) ${INSTALLKERNEL} completed in $$seconds seconds, ncpu: $$(${_ncpu_cmd})${.MAKE.JOBS:S/^/, make -j/}"
@@ -1894,14 +1894,14 @@ reinstallkernel reinstallkernel.debug: _installcheck_kernel .PHONY
 .if ${BUILDKERNELS:[#]} > 1 && ${NO_INSTALLEXTRAKERNELS} != "yes"
 .for _kernel in ${BUILDKERNELS:[2..-1]}
 	@echo "--------------------------------------------------------------"
-	@echo ">>> Installing kernel ${_kernel} $$(LC_ALL=C date)"
+	@echo ">>> Installing kernel ${_kernel} $$(date -Iseconds)"
 	@echo "--------------------------------------------------------------"
 	${_+_}cd ${KRNLOBJDIR}/${_kernel}; \
 	    ${CROSSENV} PATH=${TMPPATH:Q} \
 	    ${MAKE} ${IMAKE_INSTALL} KERNEL=${INSTKERNNAME}.${_kernel} METALOG=${METALOG} \
 	    ${.TARGET:S/kernel//}
 	@echo "--------------------------------------------------------------"
-	@echo ">>> Installing kernel ${_kernel} completed on $$(LC_ALL=C date)"
+	@echo ">>> Installing kernel ${_kernel} completed on $$(date -Iseconds)"
 	@echo "--------------------------------------------------------------"
 .endfor
 	@seconds=$$(($$(date '+%s') - ${_INSTALLKERNEL_START})); \

@@ -194,12 +194,12 @@ u=${USER:-root}
 d=$builddir
 h=${HOSTNAME:-$(hostname)}
 if [ -n "$SOURCE_DATE_EPOCH" ]; then
-	if ! t=$(date -ur $SOURCE_DATE_EPOCH 2>/dev/null); then
+	if ! t=$(date -ur $SOURCE_DATE_EPOCH -Iseconds 2>/dev/null); then
 		echo "Invalid SOURCE_DATE_EPOCH" >&2
 		exit 1
 	fi
 else
-	t=$(date)
+	t=$(date -Iseconds)
 fi
 i=$(${MAKE:-make} -V KERN_IDENT)
 compiler_v=$($(${MAKE:-make} -V CC) -v 2>&1 | grep -w 'version')
