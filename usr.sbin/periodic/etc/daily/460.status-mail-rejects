@@ -36,8 +36,20 @@ case "$daily_status_mail_rejects_enable" in
 	    echo
 	    echo Checking for rejected mail hosts:
 
-	    yesterday=$(date -v-1d '+%b %e')
-	    today=$(date '+%b %e')
+		case "$(ps -o command= -p $(pgrep -j none -f /usr/sbin/syslogd) 2> /dev/null)" in
+			*-O\ syslog*|*-O\ rfc5424*)
+				yesterday="$(date -v-1d -I)"
+				today="$(date -I)"
+				prefix_yesterday="<[0-9]{1,3}>1 ${yesterday}T"
+				prefix_today="<[0-9]{1,3}>1 ${today}T"
+				;;
+			*)
+				yesterday="$(date -v-1d "+%b %e ")"
+				today="$(date "+%b %e ")"
+				prefix_yesterday="$yesterday"
+				prefix_today="$today"
+				;;
+		esac
 	    n=$(($daily_status_mail_rejects_logs - 2))
 	    rc=$({
 		while [ $n -ge 0 ]
@@ -61,7 +73,7 @@ case "$daily_status_mail_rejects_enable" in
 		    n=$(($n - 1))
 		done
 		cat /var/log/maillog
-	    } | sed -Ene "/^$today/q" -e "/^$yesterday/{"'
+	    } | sed -Ene "/^$prefix_today/q" -e "/^$prefix_yesterday/{"'
 		    s/.*ruleset=check_relay,.* relay=([^,]+), reject=([^ ]*).*/\2 check_relay \1/p
 		    t end
                     s/.*ruleset=check_rcpt,.* arg1=<?([^>,]+).* reject=([^ ]+) .* ([^ ]+)/\2 check_rcpt \1 \3/p
