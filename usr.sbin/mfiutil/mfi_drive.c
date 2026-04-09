@@ -286,7 +286,7 @@ mfi_pd_inq_string(struct mfi_pd_info *info)
 {
 	struct scsi_inquiry_data iqd, *inq_data = &iqd;
 	char vendor[SID_VENDOR_SIZE+1], product[SID_PRODUCT_SIZE+1],
-		 revision[SID_REVISION_SIZE], rstr[9], serial[SID_VENDOR_SPECIFIC_0_SIZE+1];
+		 revision[SID_REVISION_SIZE+1], rstr[9], serial[SID_VENDOR_SPECIFIC_0_SIZE+1];
 	static char inq_string[80];
 
 	memcpy(inq_data, info->inquiry_data,
