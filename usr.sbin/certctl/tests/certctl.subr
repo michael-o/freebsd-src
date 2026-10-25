@@ -26,18 +26,26 @@ gen_key() {
 	openssl genrsa -out ${keyname}.key
 }
 
-# Generate a certificate for a given name, key, and serial number
+# Generate a certificate for a given name, key, and serial number.
+# If subj is given, it is used as-is instead of a subject derived
+# from crtname via subject().  crtname is always used as the output
+# file's base name, regardless of subj.  If cnf is given, it is used
+# as OPENSSL_CONF instead of /dev/null; this is needed to set
+# string_mask so that a non-ASCII subj value is encoded as something
+# other than UTF8String, e.g. string_mask=pkix for BMPString.
 gen_crt() {
 	local crtname=$1
 	local keyname=${2:-${crtname}}
 	local serial=${3:-1}
+	local subj=${4:-$(subject ${crtname})}
+	local cnf=${5:-/dev/null}
 
 	if ! [ -f "${keyname}".key ]; then
 		gen_key "${keyname}"
 	fi
-	env -i PATH="${PATH}" OPENSSL_CONF=/dev/null \
-	openssl req -x509 -new \
-	    -subj="$(subject ${crtname})" \
+	env -i PATH="${PATH}" OPENSSL_CONF="${cnf}" \
+	openssl req -x509 -new -utf8 \
+	    -subj="${subj}" \
 	    -set_serial ${serial} \
 	    -key ${keyname}.key \
 	    -out ${crtname}.crt

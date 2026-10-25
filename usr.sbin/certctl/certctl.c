@@ -219,12 +219,119 @@ unexpand_path(const char *path)
 }
 
 /*
+ * Returns the value of a X509_NAME_ENTRY, transcoded to UTF-8
+ * regardless of its underlying ASN.1 string type (PrintableString,
+ * T61String, BMPString, UTF8String, etc.), or NULL on failure.
+ */
+static char *
+extract_entry_utf8(X509_NAME_ENTRY *entry)
+{
+	ASN1_STRING *data;
+	unsigned char *utf8 = NULL;
+	char *value;
+	int len;
+
+	data = X509_NAME_ENTRY_get_data(entry);
+	len = ASN1_STRING_to_UTF8(&utf8, data);
+	if (len < 0)
+		return (NULL);
+	if ((value = strndup((const char *)utf8, len)) == NULL)
+		err(1, NULL);
+	OPENSSL_free(utf8);
+	return (value);
+}
+
+/*
+ * Returns the subject's commonName, transcoded to UTF-8, or NULL if
+ * the subject has none.
+ */
+static char *
+extract_cn(X509_NAME *name)
+{
+	int idx;
+
+	idx = X509_NAME_get_index_by_NID(name, NID_commonName, -1);
+	if (idx < 0)
+		return (NULL);
+	return (extract_entry_utf8(X509_NAME_get_entry(name, idx)));
+}
+
+/*
+ * Returns the value of the last attribute-value pair in the subject
+ * name, transcoded to UTF-8, or NULL if the subject has no entries at
+ * all.  Used as a short, human-readable name for certificates
+ * without a commonName.
+ */
+static char *
+extract_last_entry(X509_NAME *name)
+{
+	int idx;
+
+	idx = X509_NAME_entry_count(name) - 1;
+	if (idx < 0)
+		return (NULL);
+	return (extract_entry_utf8(X509_NAME_get_entry(name, idx)));
+}
+
+/*
+ * Returns a short name for a subject: its commonName if it has one,
+ * otherwise the value of its last attribute-value pair, otherwise
+ * the empty string.  Always computed fresh from the X509_NAME, never
+ * cached, so every caller sees the same correctly transcoded value.
+ */
+static char *
+shortname(X509_NAME *name)
+{
+	char *value;
+
+	value = extract_cn(name);
+	if (value == NULL)
+		value = extract_last_entry(name);
+	if (value == NULL)
+		value = xstrdup("");
+	return (value);
+}
+
+/*
+ * XN_FLAG_ONELINE, minus ASN1_STRFLGS_ESC_MSB: keep RFC 2253 escaping
+ * for control/special characters, but show non-ASCII values as
+ * literal UTF-8 instead of "\xx"-escaping every byte above 0x7f --
+ * consistent with the short names shortname() returns, which are
+ * also shown as literal UTF-8.
+ */
+#define XN_FLAG_ONELINE_UTF8 (XN_FLAG_ONELINE & ~ASN1_STRFLGS_ESC_MSB)
+
+/*
+ * Returns the subject's distinguished name via X509_NAME_print_ex(),
+ * which transcodes every value to UTF-8 before escaping. Output format
+ * ("type = value", comma-separated) differs from the traditional
+ * "/type=value/..." style; this is an intentional, documented
+ * behavior change.
+ */
+static char *
+format_dn(X509_NAME *name)
+{
+	BIO *bio;
+	BUF_MEM *mem;
+	char *dn;
+
+	bio = BIO_new(BIO_s_mem());
+	if (bio == NULL)
+		err(1, "BIO_new");
+	if (X509_NAME_print_ex(bio, name, 0, XN_FLAG_ONELINE_UTF8) < 0)
+		errx(1, "X509_NAME_print_ex");
+	BIO_get_mem_ptr(bio, &mem);
+	dn = xasprintf("%.*s", (int)mem->length, mem->data);
+	BIO_free(bio);
+	return (dn);
+}
+
+/*
  * X509 certificate in a rank-balanced tree.
  */
 struct cert {
 	RB_ENTRY(cert) entry;
 	unsigned long hash;
-	char *name;
 	X509 *x509;
 	char *path;
 };
@@ -232,7 +339,6 @@ struct cert {
 static void
 free_cert(struct cert *cert)
 {
-	free(cert->name);
 	X509_free(cert->x509);
 	free(cert->path);
 	free(cert);
@@ -317,7 +423,7 @@ read_cert(const char *path, struct cert_tree *tree, struct cert_tree *exclude)
 	X509_NAME *name;
 	struct cert *cert;
 	unsigned long hash;
-	int len, ni, no;
+	int ni, no;
 
 	if ((f = fopen(path, "r")) == NULL) {
 		warn("%s", path);
@@ -342,21 +448,15 @@ read_cert(const char *path, struct cert_tree *tree, struct cert_tree *exclude)
 		cert->x509 = x509;
 		name = X509_get_subject_name(x509);
 		cert->hash = X509_NAME_hash_ex(name, NULL, NULL, NULL);
-		len = X509_NAME_get_text_by_NID(name, NID_commonName,
-		    NULL, 0);
-		if (len > 0) {
-			if ((cert->name = malloc(len + 1)) == NULL)
-				err(1, NULL);
-			X509_NAME_get_text_by_NID(name, NID_commonName,
-			    cert->name, len + 1);
-		} else {
-			/* fallback for certificates without CN */
-			cert->name = X509_NAME_oneline(name, NULL, 0);
-		}
 		cert->path = xstrdup(unexpand_path(path));
 		if (RB_INSERT(cert_tree, tree, cert) != NULL)
 			errx(1, "unexpected duplicate");
-		info("%08lx: %s", cert->hash, cert->name);
+		if (verbose) {
+			char *display = longnames ? format_dn(name) :
+			    shortname(name);
+			info("%08lx: %s", cert->hash, display);
+			free(display);
+		}
 		no++;
 	}
 	/*
@@ -770,13 +870,15 @@ static void
 list_certs(struct cert_tree *tree)
 {
 	struct cert *cert;
-	char *path, *name;
+	X509_NAME *subject;
+	char *path, *display;
 
 	RB_FOREACH(cert, cert_tree, tree) {
 		path = longnames ? NULL : strrchr(cert->path, '/');
-		name = longnames ? NULL : strrchr(cert->name, '=');
-		printf("%s\t%s\n", path ? path + 1 : cert->path,
-		    name ? name + 1 : cert->name);
+		subject = X509_get_subject_name(cert->x509);
+		display = longnames ? format_dn(subject) : shortname(subject);
+		printf("%s\t%s\n", path ? path + 1 : cert->path, display);
+		free(display);
 	}
 }
 
@@ -900,7 +1002,9 @@ certctl_trust(int argc, char **argv)
 		RB_REMOVE(cert_tree, &extra, cert);
 		RB_INSERT(cert_tree, &trusted, cert);
 		if ((other = RB_FIND(cert_tree, &untrusted, cert)) != NULL) {
-			warnx("%s was previously untrusted", cert->name);
+			char *dn = format_dn(X509_get_subject_name(cert->x509));
+			warnx("%s was previously untrusted", dn);
+			free(dn);
 			warnx("source of untrust: %s", other->path);
 			RB_REMOVE(cert_tree, &untrusted, other);
 			free_cert(other);
@@ -969,7 +1073,9 @@ certctl_untrust(int argc, char **argv)
 		RB_REMOVE(cert_tree, &extra, cert);
 		RB_INSERT(cert_tree, &untrusted, cert);
 		if ((other = RB_FIND(cert_tree, &trusted, cert)) != NULL) {
-			warnx("%s was previously trusted", cert->name);
+			char *dn = format_dn(X509_get_subject_name(cert->x509));
+			warnx("%s was previously trusted", dn);
+			free(dn);
 			warnx("source of trust: %s", other->path);
 			RB_REMOVE(cert_tree, &trusted, other);
 			free_cert(other);
@@ -1087,9 +1193,9 @@ usage(void)
 {
 	fprintf(stderr, "usage: certctl [-lv] [-D destdir] [-d distbase] list\n"
 	    "       certctl [-lv] [-D destdir] [-d distbase] untrusted\n"
-	    "       certctl [-BnUv] [-D destdir] [-d distbase] [-M metalog] rehash\n"
-	    "       certctl [-nv] [-D destdir] [-d distbase] untrust <file>\n"
-	    "       certctl [-nv] [-D destdir] [-d distbase] trust <file>\n");
+	    "       certctl [-BlnUv] [-D destdir] [-d distbase] [-M metalog] rehash\n"
+	    "       certctl [-lnv] [-D destdir] [-d distbase] untrust <file>\n"
+	    "       certctl [-lnv] [-D destdir] [-d distbase] trust <file>\n");
 	exit(1);
 }
 

@@ -328,6 +328,45 @@ misc_body()
 	    env DISTBASE=base certctl -n rehash
 }
 
+atf_test_case specialchars
+specialchars_head()
+{
+	atf_set "descr" "Test display of subjects with special characters"
+	atf_set "require.progs" certctl
+}
+specialchars_body()
+{
+	export DESTDIR="$PWD"
+	mkdir -p ${DESTDIR}${DISTBASE}/usr/share/certs/trusted
+
+	# A commonName containing '=': list must show it in full,
+	# rather than truncating everything up to and including the
+	# embedded '='.
+	gen_crt cneq testkey 1 '/CN=Partner=ACME Corp CA/O=FreeBSD/'
+	mv cneq.crt ${DESTDIR}${DISTBASE}/usr/share/certs/trusted
+
+	# No commonName, and an organizationalUnitName containing
+	# '=': list falls back to the last attribute-value pair, and
+	# must show that in full too.
+	gen_crt oueq testkey 2 '/O=FreeBSD/OU=Finance=Division/'
+	mv oueq.crt ${DESTDIR}${DISTBASE}/usr/share/certs/trusted
+
+	# A commonName containing non-ASCII text, encoded as a
+	# BMPString rather than a UTF8String: list must transcode and
+	# show it correctly, rather than mishandling the raw bytes.
+	printf '[req]\ndistinguished_name = dn\nstring_mask = pkix\n[dn]\n' \
+	    >bmpstring.cnf
+	gen_crt bmpcn testkey 3 '/CN=Partner Főtanúsító/O=FreeBSD/' \
+	    bmpstring.cnf
+	mv bmpcn.crt ${DESTDIR}${DISTBASE}/usr/share/certs/trusted
+
+	atf_check certctl rehash
+	atf_check -o match:"Partner=ACME Corp CA\$" \
+	    -o match:"Finance=Division\$" \
+	    -o match:"Partner Főtanúsító\$" \
+	    certctl list
+}
+
 atf_init_test_cases()
 {
 	atf_add_test_case rehash
@@ -336,4 +375,5 @@ atf_init_test_cases()
 	atf_add_test_case untrust
 	atf_add_test_case metalog
 	atf_add_test_case misc
+	atf_add_test_case specialchars
 }
